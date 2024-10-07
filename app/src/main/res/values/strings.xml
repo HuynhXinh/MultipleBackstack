@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">MultipleBackStack</string>
+
+    <string name="title_accounts">Accounts</string>
+    <string name="title_pay_list">Pay</string>
+    <string name="title_cards">Cards</string>
+    <string name="title_profile">Profile</string>
+</resources>
