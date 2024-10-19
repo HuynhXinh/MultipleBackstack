@@ -6,7 +6,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.multiplebackstack.R
 import com.example.multiplebackstack.base.BaseFragment
 import com.example.multiplebackstack.feature.card.details.CardDetailsViewFragment
-import com.example.multiplebackstack.nav.destination.FeatureIdentifier
+import com.example.multiplebackstack.bottomnavigation.destination.FeatureIdentifier
 
 class CardsViewFragment : BaseFragment(R.layout.fragment_cards) {
 
@@ -15,8 +15,7 @@ class CardsViewFragment : BaseFragment(R.layout.fragment_cards) {
         val items = Array(20) { "Card #$it" }
         val adapter = CardsAdapter(items) { card ->
             navigate(
-                rootIdentifier = FeatureIdentifier.CARDS.featureName,
-                navDestination = FeatureIdentifier.CARD_DETAILS.symbolicDestination.navDestination,
+                identifier = FeatureIdentifier.CARD_DETAILS.featureName,
                 args = CardDetailsViewFragment.data(card)
             )
         }

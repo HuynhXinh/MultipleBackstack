@@ -1,17 +1,17 @@
-package com.example.multiplebackstack.nav.impl
+package com.example.multiplebackstack.bottomnavigation.impl
 
-import android.os.Build
-import android.os.Build.VERSION_CODES.TIRAMISU
+import android.content.Intent
 import android.os.Bundle
-import android.window.OnBackInvokedDispatcher
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
-import com.example.multiplebackstack.nav.AppNavController
-import com.example.multiplebackstack.nav.destination.FeatureIdentifier
-import com.example.multiplebackstack.nav.destination.NavDestination
-import com.example.multiplebackstack.nav.destination.NavDestination.*
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import com.example.multiplebackstack.bottomnavigation.BottomNavigationManager
+import com.example.multiplebackstack.bottomnavigation.menu.BottomItemGroup
+import com.example.multiplebackstack.bottomnavigation.menu.BottomNavigableItem
+import java.lang.ref.WeakReference
 import java.util.Stack
 
 private const val HOME_ROOT_DESTINATION_IDENTIFIER_UNDEFINE =
@@ -19,22 +19,25 @@ private const val HOME_ROOT_DESTINATION_IDENTIFIER_UNDEFINE =
 private const val CURRENT_ROOT_DESTINATION_IDENTIFIER_UNDEFINE =
     "CURRENT_ROOT_DESTINATION_IDENTIFIER_UNDEFINE"
 
-class AppNavControllerImpl(
+class BottomNavigationManagerImpl(
     activity: FragmentActivity,
     private val containerId: Int
-) : AppNavController {
+) : BottomNavigationManager, DefaultLifecycleObserver {
 
-    private val fragmentManager: FragmentManager = activity.supportFragmentManager
+    private val activityWeakReference = WeakReference(activity)
+    private val fragmentManager: FragmentManager? =
+        activityWeakReference.get()?.supportFragmentManager
 
     private var homeRootDestinationIdentifier: String = HOME_ROOT_DESTINATION_IDENTIFIER_UNDEFINE
     private var currentRootDestinationIdentifier: String =
         CURRENT_ROOT_DESTINATION_IDENTIFIER_UNDEFINE
 
-    private var rootDestinationIdentifiers: List<String> = emptyList()
+    private var rootBottomItemGroups: List<BottomItemGroup> = emptyList()
+    private var homeRootBottomItemGroup: BottomItemGroup? = null
 
-    private var listener: AppNavController.OnDestinationChangedListener? = null
+    private var listener: BottomNavigationManager.OnDestinationChangedListener? = null
 
-    private val backStackMap = mutableMapOf<String, Stack<String>>()
+    private val backStackMap = mutableMapOf<String, Stack<BottomNavigableItem>>()
 
     private val backPressedCallback: OnBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -47,56 +50,90 @@ class AppNavControllerImpl(
     }
 
     override fun isHomeRoot(): Boolean {
-        return fragmentManager.findFragmentById(containerId)?.tag == homeRootDestinationIdentifier
+        return fragmentManager?.findFragmentById(containerId)?.tag == homeRootDestinationIdentifier
     }
 
     init {
-        if (Build.VERSION.SDK_INT >= TIRAMISU) {
-            activity.onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_OVERLAY) {
-                // Handle the predictive back swipe gesture here
-                if (isHomeRoot()) {
-                    // do nothing
-                } else {
-                    handleBackStackChanged()
-                }
-            }
+        // Use the regular back press handling for older Android versions
+        activityWeakReference.get()?.apply {
+            onBackPressedDispatcher.addCallback(this, backPressedCallback)
+        }
+    }
+
+    override fun setRootBottomItemGroups(rootBottomItemGroups: List<BottomItemGroup>) {
+        this.rootBottomItemGroups = rootBottomItemGroups
+        this.homeRootBottomItemGroup = rootBottomItemGroups.first()
+        this.homeRootDestinationIdentifier = rootBottomItemGroups.first().featureTag
+    }
+
+    override fun navigate(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
+        if (isFragmentDestination(bottomNavigableItem)) {
+            navigateToFragment(bottomNavigableItem, args)
+        } else if (isActivityDestination(bottomNavigableItem)) {
+            navigateToActivity(bottomNavigableItem, args)
         } else {
-            // Use the regular back press handling for older Android versions
-            activity.onBackPressedDispatcher.addCallback(activity, backPressedCallback)
+            error("Unknown destination type")
         }
     }
 
-    override fun setRootIdentifiers(rootIdentifiers: List<String>) {
-        this.rootDestinationIdentifiers = rootIdentifiers
-        this.homeRootDestinationIdentifier = rootIdentifiers.first()
+    override fun navigate(identifier: String, args: Bundle?) {
+        lookupBottomNavigableItem(identifier)?.let { bottomNavigableItem ->
+            navigate(bottomNavigableItem, args)
+        }
     }
 
-    override fun navigate(
-        rootIdentifier: String,
-        navDestination: NavDestination,
-        args: Bundle?,
-    ) {
-        if (navDestination !is FragmentDestination) {
-            error("Unsupported destination type")
-        }
+    private fun lookupBottomNavigableItem(identifier: String): BottomNavigableItem? {
+        return rootBottomItemGroups.find { it.featureTag == identifier } ?:
+                rootBottomItemGroups.flatMap { it.children }.find { it.featureTag == identifier }
+    }
 
+    override fun setOnDestinationChangedListener(listener: BottomNavigationManager.OnDestinationChangedListener?) {
+        this.listener = listener
+    }
+
+    override fun onDestroy(owner: LifecycleOwner) {
+        super.onDestroy(owner)
+        // clear all things possible
+        backPressedCallback.remove()
+        listener = null
+        backStackMap.clear()
+        rootBottomItemGroups = emptyList()
+        homeRootDestinationIdentifier = HOME_ROOT_DESTINATION_IDENTIFIER_UNDEFINE
+        currentRootDestinationIdentifier = CURRENT_ROOT_DESTINATION_IDENTIFIER_UNDEFINE
+    }
+
+    private fun navigateToActivity(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
+        activityWeakReference.get()?.let { activity ->
+            val intent = Intent(activity, bottomNavigableItem.activityClass).apply {
+                args?.let { putExtras(it) }
+            }
+            activity.startActivity(intent)
+        }
+    }
+
+    private fun navigateToFragment(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
         // Enable back press
         enableBackPress()
+
+        val rootIdentifier = lookupRootIdentifier(bottomNavigableItem)?.featureTag
+            ?: error("Root identifier is null")
+        val fragmentClass = bottomNavigableItem.fragmentClass ?: error("Fragment class is null")
+        val identifier = bottomNavigableItem.featureTag
 
         // The first time do the navigation
         if (currentRootDestinationIdentifier == CURRENT_ROOT_DESTINATION_IDENTIFIER_UNDEFINE) {
             currentRootDestinationIdentifier = rootIdentifier
-            fragmentManager.commit {
+            fragmentManager?.commit {
                 setReorderingAllowed(true)
                 replace(
                     /* containerViewId = */ containerId,
-                    /* fragmentClass = */ navDestination.fragmentClass,
+                    /* fragmentClass = */ fragmentClass,
                     /* args = */ args,
-                    /* tag = */ navDestination.identifier
+                    /* tag = */ identifier
                 )
 
                 // If direct navigation to root destination, set name for the back stack
-                if (rootDestinationIdentifiers.contains(navDestination.identifier)) {
+                if (isRooDestination(identifier)) {
                     addToBackStack(rootIdentifier)
 
                     // Keep track of the back stack for the root destination
@@ -111,60 +148,60 @@ class AppNavControllerImpl(
             // The same root
             if (rootIdentifier == currentRootDestinationIdentifier) {
                 // If the current root is the same as the new root, then do nothing
-                if (navDestination.identifier == currentRootDestinationIdentifier) {
+                if (identifier == currentRootDestinationIdentifier) {
                     // do nothing
                 } else {
                     // Assuming navigating to a nested destination, then replace the current fragment and add it to the back stack
-                    fragmentManager.commit {
+                    fragmentManager?.commit {
                         setReorderingAllowed(true)
                         replace(
                             /* containerViewId = */ containerId,
-                            /* fragmentClass = */ navDestination.fragmentClass,
+                            /* fragmentClass = */ fragmentClass,
                             /* args = */ args,
-                            /* tag = */ navDestination.identifier
+                            /* tag = */ identifier
                         )
                         addToBackStack(null)
                     }
                 }
             } else { // Different root, then switch to the new root
                 // Save the current tab's back stack before switching to a new one
-                fragmentManager.saveBackStack(currentRootDestinationIdentifier)
+                fragmentManager?.saveBackStack(currentRootDestinationIdentifier)
 
                 // Set the new current tab
                 currentRootDestinationIdentifier = rootIdentifier
 
                 // If the new root exists in the back stack, restore it
                 if (backStackMap.contains(rootIdentifier)) {
-                    fragmentManager.restoreBackStack(rootIdentifier)
+                    fragmentManager?.restoreBackStack(rootIdentifier)
 
-                    if (rootDestinationIdentifiers.contains(navDestination.identifier)) {
+                    if (isRooDestination(identifier)) {
                         // do nothing
                     } else {
                         // Assuming navigate to nested destination
-                        fragmentManager.commit {
+                        fragmentManager?.commit {
                             setReorderingAllowed(true)
                             replace(
                                 /* containerViewId = */ containerId,
-                                /* fragmentClass = */ navDestination.fragmentClass,
+                                /* fragmentClass = */ fragmentClass,
                                 /* args = */ args,
-                                /* tag = */ navDestination.identifier
+                                /* tag = */ identifier
                             )
                             addToBackStack(null)
                         }
                     }
 
                 } else { // Haven't root
-                    fragmentManager.commit {
+                    fragmentManager?.commit {
                         setReorderingAllowed(true)
                         replace(
                             /* containerViewId = */ containerId,
-                            /* fragmentClass = */ navDestination.fragmentClass,
+                            /* fragmentClass = */ fragmentClass,
                             /* args = */ args,
-                            /* tag = */ navDestination.identifier
+                            /* tag = */ identifier
                         )
 
                         // If direct navigation to root destination, set name for the back stack
-                        if (rootDestinationIdentifiers.contains(navDestination.identifier)) {
+                        if (isRooDestination(identifier)) {
                             addToBackStack(rootIdentifier)
 
                             // Keep track of the back stack for the root destination
@@ -180,18 +217,22 @@ class AppNavControllerImpl(
         }
 
         // Notify the listener if needed
-        listener?.onDestinationChanged(rootIdentifier, navDestination)
+        listener?.onDestinationChanged(bottomNavigableItem)
     }
 
-    override fun navigate(
-        navDestination: NavDestination,
-        args: Bundle?,
-    ) {
-        navigate(currentRootDestinationIdentifier, navDestination, args)
+    private fun lookupRootIdentifier(bottomNavigableItem: BottomNavigableItem): BottomNavigableItem? {
+        return rootBottomItemGroups.find { rootBottomItemGroup ->
+            rootBottomItemGroup.featureTag == bottomNavigableItem.featureTag ||
+                    rootBottomItemGroup.children.any { child -> child.featureTag == bottomNavigableItem.featureTag }
+        }
     }
 
-    override fun setOnDestinationChangedListener(listener: AppNavController.OnDestinationChangedListener) {
-        this.listener = listener
+    private fun isActivityDestination(bottomNavigableItem: BottomNavigableItem): Boolean {
+        return bottomNavigableItem.activityClass != null
+    }
+
+    private fun isFragmentDestination(bottomNavigableItem: BottomNavigableItem): Boolean {
+        return bottomNavigableItem.fragmentClass != null
     }
 
     private fun enableBackPress() {
@@ -199,21 +240,19 @@ class AppNavControllerImpl(
     }
 
     private fun handleBackStackChanged() {
-        // Assuming the current root is not the home root
-        val currentDestinationIdentifier = fragmentManager.findFragmentById(containerId)?.tag
+        // Get the current root is not the home root
+        val currentDestinationIdentifier = fragmentManager?.findFragmentById(containerId)?.tag
             ?: error("Current destination is null")
 
         // If current destination is the root destination
-        if (rootDestinationIdentifiers.contains(currentDestinationIdentifier)) {
+        if (isRooDestination(currentDestinationIdentifier)) {
             if (currentRootDestinationIdentifier == homeRootDestinationIdentifier) {
                 // Home root destination, do nothing
             } else {
                 // Navigate to the home root destination
-                val homeRootDestination =
-                    FeatureIdentifier.fromFeatureName(homeRootDestinationIdentifier)?.symbolicDestination?.navDestination
-                if (homeRootDestination != null && homeRootDestination is FragmentDestination) {
-                    navigate(homeRootDestinationIdentifier, homeRootDestination)
-                } else {
+                homeRootBottomItemGroup?.let {
+                    navigate(it)
+                } ?: {
                     error("Home root destination is null")
                 }
             }
@@ -225,16 +264,16 @@ class AppNavControllerImpl(
             // Assuming the back stack is empty and the root destination is not in the back stack
             // then navigate to the root destination
             if (backStackCount == 0 && !backStackMap.contains(currentRootDestinationIdentifier)) {
-                val currentRootDestination =
-                    FeatureIdentifier.fromFeatureName(currentRootDestinationIdentifier)?.symbolicDestination?.navDestination
-                if (currentRootDestination != null && currentRootDestination is FragmentDestination) {
+                val currentRootDestination = lookupRootDestination(currentRootDestinationIdentifier)
+
+                if (currentRootDestination?.fragmentClass != null) {
                     fragmentManager.commit {
                         setReorderingAllowed(true)
                         replace(
                             /* containerViewId = */ containerId,
                             /* fragmentClass = */ currentRootDestination.fragmentClass,
                             /* args = */ null,
-                            /* tag = */ currentRootDestination.identifier
+                            /* tag = */ currentRootDestination.featureTag
                         )
 
                         // If direct navigation to root destination, set name for the back stack
@@ -243,15 +282,20 @@ class AppNavControllerImpl(
                         // Keep track of the back stack for the root destination
                         backStackMap[currentRootDestinationIdentifier] = Stack()
 
-                        listener?.onDestinationChanged(
-                            currentRootDestinationIdentifier,
-                            currentRootDestination
-                        )
+                        listener?.onDestinationChanged(currentRootDestination)
                     }
                 } else {
                     error("Current root destination is null")
                 }
             }
         }
+    }
+
+    private fun lookupRootDestination(identifier: String): BottomNavigableItem? {
+        return rootBottomItemGroups.find { it.featureTag == identifier }
+    }
+
+    private fun isRooDestination(identifier: String): Boolean {
+        return rootBottomItemGroups.any { it.featureTag == identifier }
     }
 }

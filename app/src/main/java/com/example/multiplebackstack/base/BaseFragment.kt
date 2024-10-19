@@ -7,10 +7,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.example.multiplebackstack.nav.Navigator
-import com.example.multiplebackstack.nav.destination.NavDestination
+import com.example.multiplebackstack.bottomnavigation.BottomNavigator
+import com.example.multiplebackstack.bottomnavigation.menu.BottomNavigableItem
 
-abstract class BaseFragment(layoutId: Int) : Fragment(layoutId), Navigator, ScrollableFragment {
+abstract class BaseFragment(layoutId: Int) : Fragment(layoutId), BottomNavigator,
+    ScrollableFragment {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -74,12 +75,12 @@ abstract class BaseFragment(layoutId: Int) : Fragment(layoutId), Navigator, Scro
         Log.d(this::class.simpleName, "onDetach - instance: ${hashCode()}")
     }
 
-    override fun navigate(rootIdentifier: String, navDestination: NavDestination, args: Bundle?) {
-        (activity as? Navigator)?.navigate(rootIdentifier, navDestination, args)
+    override fun navigate(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
+        (activity as? BottomNavigator)?.navigate(bottomNavigableItem, args)
     }
 
-    override fun navigate(navDestination: NavDestination, args: Bundle?) {
-        (activity as? Navigator)?.navigate(navDestination, args)
+    override fun navigate(identifier: String, args: Bundle?) {
+        (activity as? BottomNavigator)?.navigate(identifier, args)
     }
 
     override fun scrollToTop() {

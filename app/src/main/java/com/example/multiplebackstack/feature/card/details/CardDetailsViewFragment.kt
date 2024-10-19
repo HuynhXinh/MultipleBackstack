@@ -6,7 +6,8 @@ import android.widget.TextView
 import androidx.core.os.bundleOf
 import com.example.multiplebackstack.R
 import com.example.multiplebackstack.base.BaseFragment
-import com.example.multiplebackstack.nav.destination.FeatureIdentifier
+import com.example.multiplebackstack.bottomnavigation.destination.FeatureIdentifier
+import com.example.multiplebackstack.feature.account.details.AccountDetailsViewFragment
 
 private const val ARG_CARD_NAME = "ARG_CARD_NAME"
 
@@ -21,30 +22,28 @@ class CardDetailsViewFragment : BaseFragment(R.layout.fragment_card_details) {
 
         view.findViewById<View>(R.id.btn_go_to_accounts).setOnClickListener {
             navigate(
-                rootIdentifier = FeatureIdentifier.ACCOUNTS.featureName,
-                navDestination = FeatureIdentifier.ACCOUNTS.symbolicDestination.navDestination,
+                identifier = FeatureIdentifier.ACCOUNTS.featureName,
                 args = null
             )
         }
 
         view.findViewById<View>(R.id.btn_go_to_account_details).setOnClickListener {
             navigate(
-                rootIdentifier = FeatureIdentifier.ACCOUNTS.featureName,
-                navDestination = FeatureIdentifier.ACCOUNT_DETAILS.symbolicDestination.navDestination,
-                args = null
+                identifier = FeatureIdentifier.ACCOUNT_DETAILS.featureName,
+                args = AccountDetailsViewFragment.data("Open from Card Details: Account #999")
             )
         }
 
         view.findViewById<View>(R.id.btn_go_to_pay_list).setOnClickListener {
             navigate(
-                navDestination = FeatureIdentifier.PAY.symbolicDestination.navDestination,
+                identifier = FeatureIdentifier.PAY.featureName,
                 args = null
             )
         }
 
         view.findViewById<View>(R.id.btn_go_to_pay_details).setOnClickListener {
             navigate(
-                navDestination = FeatureIdentifier.PAY_DETAILS.symbolicDestination.navDestination,
+                identifier = FeatureIdentifier.PAY_DETAILS.featureName,
                 args = null
             )
         }

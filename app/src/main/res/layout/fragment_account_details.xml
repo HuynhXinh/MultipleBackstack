@@ -22,7 +22,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:text="GO TO CARDS TAG" />
+        android:text="GO TO CARDS TAB" />
 
     <Button
         android:id="@+id/btn_go_to_card_details"

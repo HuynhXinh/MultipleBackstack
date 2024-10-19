@@ -7,7 +7,7 @@ import androidx.core.os.bundleOf
 import com.example.multiplebackstack.R
 import com.example.multiplebackstack.base.BaseFragment
 import com.example.multiplebackstack.feature.card.details.CardDetailsViewFragment
-import com.example.multiplebackstack.nav.destination.FeatureIdentifier
+import com.example.multiplebackstack.bottomnavigation.destination.FeatureIdentifier
 
 private const val ARG_ACCOUNT_NAME = "ARG_ACCOUNT_NAME"
 
@@ -21,16 +21,14 @@ class AccountDetailsViewFragment : BaseFragment(R.layout.fragment_account_detail
 
         view.findViewById<View>(R.id.btn_go_to_cards).setOnClickListener {
             navigate(
-                rootIdentifier = FeatureIdentifier.CARDS.featureName,
-                navDestination = FeatureIdentifier.CARDS.symbolicDestination.navDestination,
+                identifier = FeatureIdentifier.CARDS.featureName,
                 args = null
             )
         }
 
         view.findViewById<View>(R.id.btn_go_to_card_details).setOnClickListener {
             navigate(
-                rootIdentifier = FeatureIdentifier.CARDS.featureName,
-                navDestination = FeatureIdentifier.CARD_DETAILS.symbolicDestination.navDestination,
+                identifier = FeatureIdentifier.CARD_DETAILS.featureName,
                 args = CardDetailsViewFragment.data("Card #1")
             )
         }

@@ -1,33 +1,29 @@
 package com.example.multiplebackstack
 
-import android.os.Build
-import android.os.Build.VERSION_CODES.TIRAMISU
 import android.os.Bundle
-import android.window.OnBackInvokedCallback
-import android.window.OnBackInvokedDispatcher
 import androidx.activity.OnBackPressedCallback
 import com.example.multiplebackstack.base.BaseActivity
-import com.example.multiplebackstack.nav.Navigator
-import com.example.multiplebackstack.nav.bottomnavigation.BottomNavItem
-import com.example.multiplebackstack.nav.bottomnavigation.BottomNavItemsProvider
-import com.example.multiplebackstack.nav.bottomnavigation.impl.BottomNavItemsProviderImpl
-import com.example.multiplebackstack.nav.bottomnavigation.impl.BottomNavViewBuilder
-import com.example.multiplebackstack.nav.bottomnavigation.impl.BottomNavViewCoordinator
-import com.example.multiplebackstack.nav.destination.FeatureIdentifier
-import com.example.multiplebackstack.nav.destination.NavDestination
-import com.example.multiplebackstack.nav.impl.AppNavControllerImpl
+import com.example.multiplebackstack.bottomnavigation.BottomNavigator
+import com.example.multiplebackstack.bottomnavigation.menu.BottomItemGroup
+import com.example.multiplebackstack.bottomnavigation.menu.BottomMenuProvider
+import com.example.multiplebackstack.bottomnavigation.menu.impl.BottomMenuProviderImpl
+import com.example.multiplebackstack.bottomnavigation.impl.BottomNavViewBuilder
+import com.example.multiplebackstack.bottomnavigation.impl.BottomNavViewCoordinator
+import com.example.multiplebackstack.bottomnavigation.destination.FeatureIdentifier
+import com.example.multiplebackstack.bottomnavigation.impl.BottomNavigationManagerImpl
+import com.example.multiplebackstack.bottomnavigation.menu.BottomNavigableItem
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
-class MainActivity : BaseActivity(R.layout.activity_main), Navigator {
+class MainActivity : BaseActivity(R.layout.activity_main), BottomNavigator {
 
     private val bottomNavigationView by lazy { findViewById<BottomNavigationView>(R.id.bottom_nav) }
 
-    private val bottomNavItemsProvider: BottomNavItemsProvider by lazy {
-        BottomNavItemsProviderImpl()
+    private val bottomMenuProvider: BottomMenuProvider by lazy {
+        BottomMenuProviderImpl()
     }
 
-    private val appNavController by lazy {
-        AppNavControllerImpl(
+    private val bottomNavigationManager by lazy {
+        BottomNavigationManagerImpl(
             activity = this,
             containerId = R.id.fragment_layout_container
         )
@@ -35,54 +31,40 @@ class MainActivity : BaseActivity(R.layout.activity_main), Navigator {
 
     private val backPressedCallback: OnBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            if (appNavController.isHomeRoot()) {
+            if (bottomNavigationManager.isHomeRoot()) {
                 finish()
             }
         }
     }
 
-    private val backInvokedCallback: OnBackInvokedCallback = OnBackInvokedCallback {
-        if (appNavController.isHomeRoot()) {
-            finish()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= TIRAMISU) {
-            onBackInvokedDispatcher.registerOnBackInvokedCallback(
-                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                backInvokedCallback
-            )
-        } else {
-            onBackPressedDispatcher.addCallback(this, backPressedCallback)
-        }
+
+        onBackPressedDispatcher.addCallback(this, backPressedCallback)
+
+        val bottomItemGroups = bottomMenuProvider.getBottomNavItems()
 
         // Setup items for the bottom navigation view
-        setupBottomNavigationView()
+        setupBottomNavigationView(bottomItemGroups)
 
         // Set up the root identifiers for the AppNavController
-        setupNavController()
+        setupNavController(bottomItemGroups)
 
         // Set up bottom navigation view coordinator
         setupBottomNavViewCoordinator()
 
         if (savedInstanceState == null) {
             // Set the initial root identifier
-            appNavController.navigate(
-                FeatureIdentifier.ACCOUNTS.featureName,
-                FeatureIdentifier.ACCOUNTS.symbolicDestination.navDestination,
-                null
-            )
+            bottomNavigationManager.navigate(FeatureIdentifier.ACCOUNTS.featureName)
         }
     }
 
-    override fun navigate(rootIdentifier: String, navDestination: NavDestination, args: Bundle?) {
-        appNavController.navigate(rootIdentifier, navDestination, args)
+    override fun navigate(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
+        bottomNavigationManager.navigate(bottomNavigableItem, args)
     }
 
-    override fun navigate(navDestination: NavDestination, args: Bundle?) {
-        appNavController.navigate(navDestination, args)
+    override fun navigate(identifier: String, args: Bundle?) {
+        bottomNavigationManager.navigate(identifier, args)
     }
 
     private fun setupBottomNavViewCoordinator() {
@@ -90,28 +72,25 @@ class MainActivity : BaseActivity(R.layout.activity_main), Navigator {
             activity = this,
             containerId = R.id.fragment_layout_container,
             bottomNavigationView = bottomNavigationView,
-            bottomNavItems = bottomNavItemsProvider.getBottomNavItems(),
-            appNavController = appNavController,
+            bottomItemGroups = bottomMenuProvider.getBottomNavItems(),
+            bottomNavigationManager = bottomNavigationManager,
             onBottomNavItemSelectedListener = object :
                 BottomNavViewCoordinator.OnBottomNavItemSelectedListener {
-                override fun onBottomNavItemSelected(navigableItem: BottomNavItem) {
+                override fun onBottomNavItemSelected(navigableItem: BottomItemGroup) {
                     // Handle bottom navigation item selection
                 }
             }
         ).setup()
     }
 
-    private fun setupNavController() {
-        val rootIdentifiers =
-            bottomNavItemsProvider.getBottomNavItems().map { it.featureTag }
-        appNavController.setRootIdentifiers(rootIdentifiers)
+    private fun setupNavController(bottomItemGroups: List<BottomItemGroup>) {
+        bottomNavigationManager.setRootBottomItemGroups(bottomItemGroups)
     }
 
-    private fun setupBottomNavigationView() {
-        val bottomNavItems = bottomNavItemsProvider.getBottomNavItems()
+    private fun setupBottomNavigationView(bottomItemGroups: List<BottomItemGroup>) {
         BottomNavViewBuilder(
             bottomNavigationView = bottomNavigationView,
-            items = bottomNavItems
+            items = bottomItemGroups
         ).build()
     }
 }
