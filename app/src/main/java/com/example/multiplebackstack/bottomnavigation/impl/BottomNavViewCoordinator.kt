@@ -86,7 +86,7 @@ class BottomNavViewCoordinator(
     }
 
     private fun dispatcherDestination(bottomNavigableItem: BottomNavigableItem): Boolean {
-        bottomNavigationManagerWeakReference.get()?.navigate(bottomNavigableItem)
+        bottomNavigationManagerWeakReference.get()?.switchRoot(bottomNavigableItem)
         return bottomNavigableItem.fragmentClass != null
     }
 

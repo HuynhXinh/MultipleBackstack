@@ -15,7 +15,7 @@ class AccountDetailsViewFragment : BaseFragment(R.layout.fragment_account_detail
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val accountName = requireArguments().getString(ARG_ACCOUNT_NAME)
+        val accountName = arguments?.getString(ARG_ACCOUNT_NAME) ?: "Unknown Account"
         val tvAccountDetails = view.findViewById<TextView>(R.id.tv_account_details)
         tvAccountDetails.text = accountName
 

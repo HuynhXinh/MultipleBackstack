@@ -4,6 +4,11 @@ import android.os.Bundle
 import com.example.multiplebackstack.bottomnavigation.menu.BottomNavigableItem
 
 interface BottomNavigator {
+    fun switchRoot(
+        bottomNavigableItem: BottomNavigableItem,
+        args: Bundle? = null,
+    )
+
     fun navigate(
         bottomNavigableItem: BottomNavigableItem,
         args: Bundle? = null,

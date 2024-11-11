@@ -4,13 +4,15 @@ import com.example.multiplebackstack.bottomnavigation.menu.BottomItemGroup
 import com.example.multiplebackstack.bottomnavigation.menu.BottomNavigableItem
 
 interface BottomNavigationManager : BottomNavigator {
-    fun setRootBottomItemGroups(rootBottomItemGroups: List<BottomItemGroup>)
+    fun presetBottomItemGroups(bottomItemGroups: List<BottomItemGroup>)
 
     fun setOnDestinationChangedListener(listener: OnDestinationChangedListener?)
 
-    fun isHomeRoot(): Boolean
+    fun canNavigateUp(): Boolean
 
     interface OnDestinationChangedListener {
         fun onDestinationChanged(bottomNavigableItem: BottomNavigableItem)
     }
+
+
 }

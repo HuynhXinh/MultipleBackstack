@@ -41,7 +41,7 @@ class BottomNavigationManagerImpl(
 
     private val backPressedCallback: OnBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            if (isHomeRoot()) {
+            if (canNavigateUp()) {
                 isEnabled = false
             } else {
                 handleBackStackChanged()
@@ -49,7 +49,7 @@ class BottomNavigationManagerImpl(
         }
     }
 
-    override fun isHomeRoot(): Boolean {
+    override fun canNavigateUp(): Boolean {
         return fragmentManager?.findFragmentById(containerId)?.tag == homeRootDestinationIdentifier
     }
 
@@ -60,7 +60,7 @@ class BottomNavigationManagerImpl(
         }
     }
 
-    override fun setRootBottomItemGroups(rootBottomItemGroups: List<BottomItemGroup>) {
+    override fun presetBottomItemGroups(rootBottomItemGroups: List<BottomItemGroup>) {
         this.rootBottomItemGroups = rootBottomItemGroups
         this.homeRootBottomItemGroup = rootBottomItemGroups.first()
         this.homeRootDestinationIdentifier = rootBottomItemGroups.first().featureTag
@@ -76,6 +76,10 @@ class BottomNavigationManagerImpl(
         }
     }
 
+    override fun switchRoot(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
+        navigate(bottomNavigableItem, args)
+    }
+
     override fun navigate(identifier: String, args: Bundle?) {
         lookupBottomNavigableItem(identifier)?.let { bottomNavigableItem ->
             navigate(bottomNavigableItem, args)
@@ -83,8 +87,8 @@ class BottomNavigationManagerImpl(
     }
 
     private fun lookupBottomNavigableItem(identifier: String): BottomNavigableItem? {
-        return rootBottomItemGroups.find { it.featureTag == identifier } ?:
-                rootBottomItemGroups.flatMap { it.children }.find { it.featureTag == identifier }
+        return rootBottomItemGroups.find { it.featureTag == identifier }
+            ?: rootBottomItemGroups.flatMap { it.children }.find { it.featureTag == identifier }
     }
 
     override fun setOnDestinationChangedListener(listener: BottomNavigationManager.OnDestinationChangedListener?) {

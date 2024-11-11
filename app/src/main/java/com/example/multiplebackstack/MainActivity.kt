@@ -4,14 +4,14 @@ import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import com.example.multiplebackstack.base.BaseActivity
 import com.example.multiplebackstack.bottomnavigation.BottomNavigator
-import com.example.multiplebackstack.bottomnavigation.menu.BottomItemGroup
-import com.example.multiplebackstack.bottomnavigation.menu.BottomMenuProvider
-import com.example.multiplebackstack.bottomnavigation.menu.impl.BottomMenuProviderImpl
+import com.example.multiplebackstack.bottomnavigation.destination.FeatureIdentifier
 import com.example.multiplebackstack.bottomnavigation.impl.BottomNavViewBuilder
 import com.example.multiplebackstack.bottomnavigation.impl.BottomNavViewCoordinator
-import com.example.multiplebackstack.bottomnavigation.destination.FeatureIdentifier
-import com.example.multiplebackstack.bottomnavigation.impl.BottomNavigationManagerImpl
+import com.example.multiplebackstack.bottomnavigation.impl.BottomNavigationManagerImplV6
+import com.example.multiplebackstack.bottomnavigation.menu.BottomItemGroup
+import com.example.multiplebackstack.bottomnavigation.menu.BottomMenuProvider
 import com.example.multiplebackstack.bottomnavigation.menu.BottomNavigableItem
+import com.example.multiplebackstack.bottomnavigation.menu.impl.BottomMenuProviderImpl
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : BaseActivity(R.layout.activity_main), BottomNavigator {
@@ -23,7 +23,7 @@ class MainActivity : BaseActivity(R.layout.activity_main), BottomNavigator {
     }
 
     private val bottomNavigationManager by lazy {
-        BottomNavigationManagerImpl(
+        BottomNavigationManagerImplV6(
             activity = this,
             containerId = R.id.fragment_layout_container
         )
@@ -31,7 +31,7 @@ class MainActivity : BaseActivity(R.layout.activity_main), BottomNavigator {
 
     private val backPressedCallback: OnBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            if (bottomNavigationManager.isHomeRoot()) {
+            if (bottomNavigationManager.canNavigateUp()) {
                 finish()
             }
         }
@@ -55,8 +55,12 @@ class MainActivity : BaseActivity(R.layout.activity_main), BottomNavigator {
 
         if (savedInstanceState == null) {
             // Set the initial root identifier
-            bottomNavigationManager.navigate(FeatureIdentifier.ACCOUNTS.featureName)
+            bottomNavigationManager.navigate(FeatureIdentifier.CARD_DETAILS.featureName)
         }
+    }
+
+    override fun switchRoot(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
+        bottomNavigationManager.switchRoot(bottomNavigableItem, args)
     }
 
     override fun navigate(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
@@ -84,7 +88,7 @@ class MainActivity : BaseActivity(R.layout.activity_main), BottomNavigator {
     }
 
     private fun setupNavController(bottomItemGroups: List<BottomItemGroup>) {
-        bottomNavigationManager.setRootBottomItemGroups(bottomItemGroups)
+        bottomNavigationManager.presetBottomItemGroups(bottomItemGroups)
     }
 
     private fun setupBottomNavigationView(bottomItemGroups: List<BottomItemGroup>) {

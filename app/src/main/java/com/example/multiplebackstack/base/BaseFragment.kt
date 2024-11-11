@@ -75,6 +75,10 @@ abstract class BaseFragment(layoutId: Int) : Fragment(layoutId), BottomNavigator
         Log.d(this::class.simpleName, "onDetach - instance: ${hashCode()}")
     }
 
+    override fun switchRoot(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
+        (activity as? BottomNavigator)?.switchRoot(bottomNavigableItem, args)
+    }
+
     override fun navigate(bottomNavigableItem: BottomNavigableItem, args: Bundle?) {
         (activity as? BottomNavigator)?.navigate(bottomNavigableItem, args)
     }

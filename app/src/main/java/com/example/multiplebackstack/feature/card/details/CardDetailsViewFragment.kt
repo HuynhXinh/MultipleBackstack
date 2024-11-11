@@ -16,7 +16,7 @@ class CardDetailsViewFragment : BaseFragment(R.layout.fragment_card_details) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val cardName = requireArguments().getString(ARG_CARD_NAME)
+        val cardName = arguments?.getString(ARG_CARD_NAME) ?: "Unknown Account"
         val tvCardDetails = view.findViewById<TextView>(R.id.tv_card_details)
         tvCardDetails.text = cardName
 
